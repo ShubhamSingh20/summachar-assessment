@@ -18,7 +18,7 @@ get_user = lambda u : model_to_dict(u, ['username', 'created_at', 'updated_at'])
 class QuestionSerializer(serializers.ModelSerializer):
     id = serializers.SlugField(source='slug', required=False)
     quiz = serializers.SlugField(required=False, source='quiz_slug', validators=[
-        ExistValidator(Quiz.objects.all(), field='slug')
+        ExistValidator(Quiz, field='slug')
     ])
 
     def __init__(self, hide_quiz=False, *args, **kwargs):

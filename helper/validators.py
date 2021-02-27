@@ -1,4 +1,5 @@
 from typing import Any, Callable, List, OrderedDict
+from django.db.models import Model
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from rest_framework.serializers import ValidationError
@@ -19,30 +20,19 @@ class ExistValidator:
     message = _('This field must exists.')
     requires_context = True
 
-    def __init__(self, queryset, field=None, message=None, lookup='exact') -> None:
-        self.queryset = queryset
+    def __init__(self, model : Model, field=None, message=None, lookup='exact') -> None:
+        self.model = model
         self.message = message or self.message
         self.field = field
-        self.lookup = lookup
-
-    def filter_queryset(self, value, queryset, field_name) -> QuerySet:
-        """
-        Filter the queryset to all instances matching the given attribute.
-        """
-        filter_kwargs = {'%s__%s' % (field_name, self.lookup): value}
-        return qs_filter(queryset, **filter_kwargs)
 
     def __call__(self, value, serializer_field) -> None:
         # Determine the underlying model field name. This may not be the
         # same as the serializer field name if `source=<>` is set.
         field_name = self.field if self.field is not None \
                 else serializer_field.source_attrs[-1]
-        # Determine the existing instance, if this is an update operation.
-        # TODO: Use exclude_current_instance to exclude during update
-        queryset = self.queryset
-        queryset = self.filter_queryset(value, queryset, field_name)
 
-        if not qs_exists(queryset):
+        # check if the value exists with limit 1
+        if self.model.objects.filter(**{field_name: value}).first() is None:
             raise ValidationError(self.message, code='exist')
 
 class NestedDataUnqiueValidator:
