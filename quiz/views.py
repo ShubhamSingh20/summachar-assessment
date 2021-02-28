@@ -5,11 +5,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import Serializer
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
 
-from helper.viewsets import ModelInstanceViewSet
-from helper.permissions import AdminUserOnly, IsOwnerOrNoAccess
+from helper.viewsets import ModelViewSetWithoutList
+from helper.permissions import AdminUserOnly
 
 from quiz.exceptions import QuizNotTakenException
 from quiz.models import Question, Quiz, TakenQuiz
@@ -20,15 +20,14 @@ from quiz.serializers import (
     UserTakenQuizSolutionSerializer
 )
 
-
 # Create your views here.
-class QuestionViewSet(ModelInstanceViewSet):
+class QuestionViewSet(ModelViewSetWithoutList):
     lookup_field = 'slug'
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
 
     def get_permissions(self) -> List:
-        if self.action is 'retrieve':
+        if self.action == 'retrieve':
             permission_classes = [IsQuizLive]
 
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -42,7 +41,7 @@ class QuizViewSet(ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def get_serializer_class(self) -> Serializer:
-        if self.action is 'list':
+        if self.action == 'list':
             """
             No need to list out all the questions for all the quiz,
             only return questions when a quiz pk is specified
@@ -53,16 +52,16 @@ class QuizViewSet(ModelViewSet):
             return QuizSerializer
 
     def get_permissions(self) -> List:
-        if self.action is 'retrieve':
+        if self.action == 'retrieve':
             # a non admin user can only view the quiz 
             # questions when it's live
-            permission_classes = [IsQuizLive] if not self.request.user.is_superuser else [IsAuthenticated]
+            permission_classes = [IsQuizLive] if not self.request.user.is_superuser else [IsAdminUser]
 
-        if self.action is 'list':
+        if self.action == 'list':
             permission_classes = [IsAuthenticated]
 
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [AdminUserOnly, IsOwnerOrNoAccess]
+            permission_classes = [AdminUserOnly]
 
         return [permission() for permission in permission_classes]
 

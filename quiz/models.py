@@ -5,6 +5,7 @@ from helper.models import ModelStamps
 from django.db.models.query import QuerySet
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
+from django.core.validators import FileExtensionValidator
 
 User  = get_user_model()
 
@@ -43,12 +44,14 @@ class Question(models.Model):
     question_text = models.TextField(_('question_text'), null=False)
     question_img = models.FileField(
         _('question_img'), 
+        upload_to="media/questions/%Y-%m-%d/",
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png'])],
         null=True, default=None
     )
 
     QUESTION_TYPE_ENUM = (
-        ('mcq', 'MCQ'),
-        ('open_text', 'Open Text'),
+        ('mcq', 'mcq'),
+        ('open_text', 'open_text'),
     )
 
     question_type = models.CharField(
@@ -64,6 +67,25 @@ class Question(models.Model):
     def __str__(self) -> str:
         return '<Question {} of Quiz {}>'.format(self.id, self.quiz.name)
 
+    @property
+    def stats(self) -> dict:
+        question_solutions = QuestionSolution.objects.filter(question=self)
+        data = {
+            'total_correct': question_solutions.filter(is_correct=True).count(),
+            'total_attempt' : question_solutions.count()
+        }
+        
+        if self.question_type == 'mcq':
+            data.update({
+                'mcq': {
+                    'total_a' : question_solutions.filter(answer='a').count(),
+                    'total_b' : question_solutions.filter(answer='b').count(),
+                    'total_c' : question_solutions.filter(answer='c').count(),
+                }   
+            })
+
+        return data
+        
     @property
     def quiz_slug(self) -> str:
         return self.quiz.slug
@@ -100,3 +122,7 @@ class QuestionSolution(models.Model):
         _('answer'), max_length=250, 
         null=True, default=None
     )
+
+    @property
+    def question_slug(self) -> str:
+        return self.question.slug

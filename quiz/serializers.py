@@ -41,15 +41,21 @@ class QuestionSerializer(serializers.ModelSerializer):
             'question_img', 'question_type',
             'answer', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['stats', 'created_at', 'updated_at']
         extra_kwargs = {
             'url': {'lookup_field': 'slug'},
         }
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
+        attrs['answer'] = attrs['answer'].lower()
         if quiz_slug := attrs.pop('quiz_slug', False):
             attrs['quiz'] = Quiz.objects.get(slug=quiz_slug)
         return attrs
+
+    def to_representation(self, instance : Question):
+        data : OrderedDict = super().to_representation(instance)
+        data['stats'] = instance.stats
+        return data
 
 class QuizWithoutQuestionsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -139,6 +145,7 @@ class UserTakenQuizSolutionSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'answer']
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
+        attrs['answer'] = attrs['answer'].lower()
         if question_slug := attrs.pop('question_slug', False):
             attrs['question'] = Question.objects.get(slug=question_slug)
         return attrs
