@@ -1,12 +1,9 @@
-from helper.models import User
-from django.db import transaction
 from django.forms.models import model_to_dict
 from typing import Dict, OrderedDict, List
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from quiz.models import Quiz, Question, QuestionSolution
-from helper.validators import InListValidator, ExistValidator
-from rest_framework.exceptions import APIException, ValidationError
+from helper.validators import ExistValidator
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 
 CollectedDict = List[OrderedDict]
@@ -21,7 +18,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         ExistValidator(Quiz, field='slug')
     ])
 
-    def __init__(self, hide_quiz=False, *args, **kwargs):
+    def __init__(self, hide_quiz=False, *args, **kwargs) -> None:
         """
             While working using `QuestionSerializer` in `QuizSerializer`
             `quiz` field will be populated by `QuizSerilaizer` after the 
@@ -47,7 +44,7 @@ class QuestionSerializer(serializers.ModelSerializer):
             'url': {'lookup_field': 'slug'},
         }
 
-    def validate(self, attrs : OrderedDict):
+    def validate(self, attrs : OrderedDict) -> OrderedDict:
         if quiz_slug := attrs.pop('quiz_slug', False):
             attrs['quiz'] = Quiz.objects.get(slug=quiz_slug)
         return attrs
@@ -101,6 +98,7 @@ class QuizSerializer(serializers.ModelSerializer):
         quiz : Quiz = super().update(instance, validated_data)
 
         # get list of all the questions that needs to be created & questions that just needs to be updated
+        # check for the slugs, if they have slug then update question else create question with that data
         create_question_data : CollectedDict = list(filter(lambda x: 'slug' not in dict(x).keys(), questions))
         update_question_data : CollectedDict = list(filter(lambda x: 'slug' in dict(x).keys(), questions))
 
@@ -113,3 +111,19 @@ class QuizSerializer(serializers.ModelSerializer):
         map(lambda q: Question.objects.filter(slug=q.pop('slug')).update(**q), update_question_data)
 
         return quiz
+
+class UserTakenQuizSolutionSerializer(serializers.ModelSerializer):
+    question = serializers.SlugField(
+        required=True, source='question_slug', 
+        validators=[ExistValidator(Question, field='slug')]
+    )
+
+    class Meta:
+        model = QuestionSolution
+        read_only_fields = ['id']
+        fields = ['id', 'question', 'answer']
+
+    def validate(self, attrs : OrderedDict) -> OrderedDict:
+        if question_slug := attrs.pop('question_slug', False):
+            attrs['question'] = Question.objects.get(slug=question_slug)
+        return attrs

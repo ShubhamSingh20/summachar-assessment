@@ -1,10 +1,7 @@
 from quiz.models import Question, Quiz
-from services.models import Video
 from accounts.models import User
 from django.test import TestCase
-from topics.models import Topic
 from rest_framework import status
-from topics.factories import TopicFactory
 from rest_framework.test import APIClient
 
 # Create your tests here.

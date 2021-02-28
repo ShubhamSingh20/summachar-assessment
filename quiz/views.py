@@ -1,9 +1,13 @@
-from quiz.models import Quiz, Question
+from helper.models import User
+from django.http import Http404
+from rest_framework import status
+from quiz.models import Quiz, Question, TakenQuiz
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
-from quiz.serializers import QuizSerializer, QuestionSerializer
+from quiz.serializers import QuizSerializer, QuestionSerializer, UserTakenQuizSolutionSerializer
 
 # Create your views here.
 
@@ -39,3 +43,23 @@ class QuizViewSet(ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
+    def get_quiz(self, pk):
+        try:
+            return Quiz.objects.get(pk=pk)
+        except Quiz.DoesNotExist:
+            raise Http404
+
+    @action(detail=True, methods=['post'])
+    def user_submission(self, request, pk) -> User:
+        quiz : Quiz = self.get_quiz(pk)
+        serializer = UserTakenQuizSolutionSerializer(data=request.data, many=True)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        taken_quiz = TakenQuiz.objects.create(quiz=quiz, user=self.request.user)
+        serializer.save(taken=taken_quiz)
+        taken_quiz.save_total_score()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

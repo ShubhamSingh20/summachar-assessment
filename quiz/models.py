@@ -66,16 +66,24 @@ class Question(models.Model):
 class TakenQuiz(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    taken_on = models.DateTimeField(_('taken_on'), auto_now_add=True)
     score = models.FloatField(_('score'), default=0)
+
+    def save_total_score(self) -> None:
+        self.score = QuestionSolution.objects.filter(
+            taken_quiz=self, is_correct=True
+        ).count()
+
+        self.save()
 
     def __str__(self) -> str:
         return '< %s by %s>' % (self.quiz.name, self.user.username)
 
 class QuestionSolution(models.Model):
     taken_quiz = models.ForeignKey(TakenQuiz, on_delete=models.CASCADE)
-    question = models.OneToOneField(Question, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
     is_correct = models.BooleanField(_('is_correct'), default=False)
     answer = models.CharField(
-        _('correct_solution'), max_length=250, 
+        _('answer'), max_length=250, 
         null=True, default=None
     )
