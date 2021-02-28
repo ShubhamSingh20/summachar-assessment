@@ -2,6 +2,7 @@ from quiz.exceptions import QuizNotTakenException
 from rest_framework.serializers import Serializer
 from quiz.permissions import IsQuizLive, IsQuizTaken
 from typing import List
+from helper.viewsets import ModelInstanceViewSet
 from helper.permissions import AdminUserOnly, IsOwnerOrNoAccess
 from rest_framework import status
 from quiz.models import Quiz, Question, TakenQuiz
@@ -17,11 +18,10 @@ from quiz.serializers import (
 )
 
 # Create your views here.
-class QuestionViewSet(ModelViewSet):
+class QuestionViewSet(ModelInstanceViewSet):
     lookup_field = 'slug'
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    pagination_class = LimitOffsetPagination
 
     def get_permissions(self) -> List:
         if self.action is 'retrieve':
