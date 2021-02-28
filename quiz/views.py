@@ -3,7 +3,6 @@ from rest_framework.serializers import Serializer
 from quiz.permissions import IsQuizLive, IsQuizTaken
 from typing import List
 from helper.permissions import AdminUserOnly, IsOwnerOrNoAccess
-from django.http import Http404
 from rest_framework import status
 from quiz.models import Quiz, Question, TakenQuiz
 from rest_framework.decorators import action
@@ -18,14 +17,20 @@ from quiz.serializers import (
 )
 
 # Create your views here.
-
 class QuestionViewSet(ModelViewSet):
-    permissions = [IsAuthenticated]
     lookup_field = 'slug'
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
+
+    def get_permissions(self) -> List:
+        if self.action is 'retrieve':
+            permission_classes = [IsQuizLive]
+
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [AdminUserOnly]
+
+        return [permission() for permission in permission_classes]
 
 class QuizViewSet(ModelViewSet):
     lookup_field = 'slug'
@@ -68,7 +73,7 @@ class QuizViewSet(ModelViewSet):
         detail=True, methods=['post'], 
         permission_classes=[IsAuthenticated, IsQuizTaken, IsQuizLive]
     )
-    def user_submission(self, request, pk) -> Response:
+    def user_submit(self, request, pk) -> Response:
         quiz : Quiz = self.get_object(pk)
         serializer = UserTakenQuizSolutionSerializer(data=request.data, many=True)
 
@@ -88,9 +93,9 @@ class QuizViewSet(ModelViewSet):
         quiz : Quiz = self.get_object(pk)
 
         try:
-            taken_quiz = TakenQuiz.objects.get(quiz=quiz)
+            taken_quiz = TakenQuiz.objects.get(quiz=quiz, user=request.user)
         except TakenQuiz.DoesNotExist:
             raise QuizNotTakenException
-        
+
         serializer = UserTakenQuizSolutionSerializer(instance=taken_quiz.answers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

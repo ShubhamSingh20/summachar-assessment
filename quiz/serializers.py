@@ -63,6 +63,11 @@ class QuizWithoutQuestionsSerializer(serializers.ModelSerializer):
             'url': {'lookup_field': 'slug'}
         }
 
+    def to_representation(self, instance : Quiz):
+        data : OrderedDict = super().to_representation(instance)
+        data['questions'] = instance.questions.values_list('slug', flat=True)
+        return data
+
 class QuizSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='slug')
     name = serializers.CharField(validators=[

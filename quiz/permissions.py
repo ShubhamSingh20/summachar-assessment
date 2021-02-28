@@ -1,4 +1,4 @@
-from quiz.models import Quiz, TakenQuiz
+from quiz.models import Question, Quiz, TakenQuiz
 from rest_framework.permissions import BasePermission
 
 class HaveRole(BasePermission):
@@ -22,6 +22,11 @@ class IsQuizTaken(BasePermission):
 class IsQuizLive(BasePermission):
     message = 'Quiz is not live.'
 
-    def has_object_permission(self, request, view, quiz : Quiz):
-        return quiz.is_live
+    def has_object_permission(self, request, view, obj) -> bool:
+        if isinstance(obj, Quiz):
+            return obj.is_live
 
+        if isinstance(obj, Question):
+            return obj.quiz.is_live
+        
+        return False
