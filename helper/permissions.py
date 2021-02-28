@@ -16,3 +16,13 @@ class IsOwnerOrNoAccess(BasePermission):
         if hasattr(obj, 'created_by'):
             return obj.created_by == user
         return obj.user == user
+    
+class AdminUserOnly(BasePermission):
+    message = 'Only Admin users are allowed'
+
+    def has_permission(self, request, view, obj):
+        return bool(
+            hasattr(request, 'user')
+            and request.user.is_authenticated 
+            and request.user.is_superuser
+        )

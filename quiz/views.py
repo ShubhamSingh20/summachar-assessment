@@ -1,4 +1,8 @@
-from helper.models import User
+from quiz.exceptions import QuizNotTakenException
+from rest_framework.serializers import Serializer
+from quiz.permissions import IsQuizLive, IsQuizTaken
+from typing import List
+from helper.permissions import AdminUserOnly, IsOwnerOrNoAccess
 from django.http import Http404
 from rest_framework import status
 from quiz.models import Quiz, Question, TakenQuiz
@@ -7,7 +11,11 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
-from quiz.serializers import QuizSerializer, QuestionSerializer, UserTakenQuizSolutionSerializer
+from quiz.serializers import (
+    QuizSerializer, QuestionSerializer, 
+    UserTakenQuizSolutionSerializer, 
+    QuizWithoutQuestionsSerializer
+)
 
 # Create your views here.
 
@@ -19,40 +27,49 @@ class QuestionViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
-    def paginate_queryset(self, queryset):
-        if 'all' not in self.request.GET:
-            return super().paginate_queryset(queryset)
-
 class QuizViewSet(ModelViewSet):
-    permissions = [IsAuthenticated]
     lookup_field = 'slug'
-    serializer_class = QuizSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = Quiz.objects.all()
     pagination_class = LimitOffsetPagination
 
-    def get_queryset(self):
-        return Quiz.objects.filter(created_by=self.request.user)
+    def get_serializer_class(self) -> Serializer:
+        if self.action is 'list':
+            """
+            No need to list out all the questions for all the quiz,
+            only return questions when a quiz pk is specified
+            """
+            return QuizWithoutQuestionsSerializer
 
-    def paginate_queryset(self, queryset):
-        if 'all' not in self.request.GET:
-            return super().paginate_queryset(queryset)
+        if self.action in ['retrieve', 'create', 'update', 'partial_update', 'destroy']:
+            return QuizSerializer
 
-    def perform_create(self, serializer):
+    def get_permissions(self) -> List:
+        if self.action is 'retrieve':
+            # a non admin user can only view the quiz 
+            # questions when it's live
+            permission_classes = [IsQuizLive] if not self.request.user.is_superuser else [IsAuthenticated]
+
+        if self.action is 'list':
+            permission_classes = [IsAuthenticated]
+
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [AdminUserOnly, IsOwnerOrNoAccess]
+
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer) -> None:
         user = self.request.user
         serializer.save(created_by=user, updated_by=user)
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer) -> None:
         serializer.save(updated_by=self.request.user)
 
-    def get_quiz(self, pk):
-        try:
-            return Quiz.objects.get(pk=pk)
-        except Quiz.DoesNotExist:
-            raise Http404
-
-    @action(detail=True, methods=['post'])
-    def user_submission(self, request, pk) -> User:
-        quiz : Quiz = self.get_quiz(pk)
+    @action(
+        detail=True, methods=['post'], 
+        permission_classes=[IsAuthenticated, IsQuizTaken, IsQuizLive]
+    )
+    def user_submission(self, request, pk) -> Response:
+        quiz : Quiz = self.get_object(pk)
         serializer = UserTakenQuizSolutionSerializer(data=request.data, many=True)
 
         if not serializer.is_valid():
@@ -63,3 +80,17 @@ class QuizViewSet(ModelViewSet):
         taken_quiz.save_total_score()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(
+        detail=True, methods=['get'], 
+        permission_classes=[IsAuthenticated]
+    )
+    def user_answers(self, request, pk) -> Response:
+        quiz : Quiz = self.get_object(pk)
+
+        try:
+            taken_quiz = TakenQuiz.objects.get(quiz=quiz)
+        except TakenQuiz.DoesNotExist:
+            raise QuizNotTakenException
+        
+        serializer = UserTakenQuizSolutionSerializer(instance=taken_quiz.answers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 from uuid import uuid4
 from django.db import models
+from datetime import datetime
 from helper.models import ModelStamps
 from django.db.models.query import QuerySet
 from django.contrib.auth import get_user_model
@@ -14,7 +15,6 @@ class Quiz(ModelStamps):
     slug = models.SlugField(_('slug'), default=uuid4, editable=False)
     schedule_date = models.DateTimeField(_('schedule_date'))
     end_date = models.DateTimeField(_('end_date'))
-    is_public = models.BooleanField(_('is_public'), default=False)
     description = models.TextField(_('description'), null=True, default=None)
     time_per_question = models.PositiveSmallIntegerField(
         _('time_per_question'), default=60, 
@@ -23,6 +23,15 @@ class Quiz(ModelStamps):
 
     def __str__(self) -> str:
         return '<Quiz {}>'.format(self.name)
+
+    @property
+    def question_count(self) -> int:
+        return self.questions.count()
+
+    @property
+    def is_live(self) -> bool:
+        today = datetime.now()
+        return  today >= self.schedule_date or today <= self.end_date 
 
     @property
     def questions(self) -> QuerySet:
@@ -75,6 +84,10 @@ class TakenQuiz(models.Model):
         ).count()
 
         self.save()
+
+    @property
+    def answers(self) -> QuerySet:
+        return QuestionSolution.objects.filter(taken_quiz=self)
 
     def __str__(self) -> str:
         return '< %s by %s>' % (self.quiz.name, self.user.username)

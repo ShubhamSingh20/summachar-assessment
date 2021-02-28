@@ -49,11 +49,19 @@ class QuestionSerializer(serializers.ModelSerializer):
             attrs['quiz'] = Quiz.objects.get(slug=quiz_slug)
         return attrs
 
-    def to_representation(self, instance) -> OrderedDict:
-        data : OrderedDict= super().to_representation(instance)
-        data['quiz_id'] = instance.quiz.slug
-        return data
-
+class QuizWithoutQuestionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quiz
+        lookup_field = 'slug'
+        fields = [
+            'id', 'slug', 'schedule_date',
+            'end_date', 'is_public', 'description',
+            'time_per_question', 'created_at', 'updated_at',
+            'is_live', 'question_count',
+        ]
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
 
 class QuizSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='slug')
