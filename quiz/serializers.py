@@ -1,10 +1,12 @@
+from typing import Dict, List, OrderedDict
+
+from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.forms.models import model_to_dict
-from typing import Dict, OrderedDict, List
+from helper.validators import ExistValidator
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from quiz.models import Quiz, Question, QuestionSolution
-from helper.validators import ExistValidator
-from django.core.validators import MaxLengthValidator, MinLengthValidator
+
+from quiz.models import Question, QuestionSolution, Quiz
 
 CollectedDict = List[OrderedDict]
 
