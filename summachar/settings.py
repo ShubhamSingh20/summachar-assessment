@@ -66,9 +66,7 @@ INSTALLED_APPS = [
     'rest_framework',
 
     'helper',
-    #'services',
     'accounts',
-    #'topics',
     'quiz',
 ]
 

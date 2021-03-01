@@ -1,9 +1,10 @@
+from datetime import date
 from typing import Any, Dict
 
 from django.db.models.query import QuerySet
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,7 +17,7 @@ from accounts.serializer import UserSerializer
 
 # Create your views here.
 
-class TokenObtainPairSerializer(TokenObtainPairSerializer):
+class LoginObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs) -> Dict:
         data : Dict = super().validate(attrs)
@@ -24,16 +25,17 @@ class TokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 class JWTAuthLogin(TokenObtainPairView):
-    serializer_class = TokenObtainPairSerializer
+    serializer_class = LoginObtainPairSerializer
 
     def post(self, request, *args, **kwargs) -> Response:
         response = super().post(request, *args, **kwargs)
 
-        accessToken = response.data['access']
-        response.set_cookie('jwt', accessToken, httponly=True)
+        if accessToken := response.data['access']:
+            response.set_cookie('jwt', accessToken, httponly=True)
 
-        refreshToken = response.data['refresh']
-        response.set_cookie('refresh', refreshToken, httponly=True)
+        if refreshToken := response.data['refresh']:
+            response.set_cookie('refresh', refreshToken, httponly=True)
+
         return response
 
 class JWTAuthRefresh(TokenRefreshView):
@@ -42,11 +44,12 @@ class JWTAuthRefresh(TokenRefreshView):
     def post(self, request, *args, **kwargs) -> Response:
         response = super().post(request, *args, **kwargs)
 
-        accessToken = response.data['access']
-        response.set_cookie('jwt', accessToken, httponly=True)
+        if accessToken := response.data['access']:
+            response.set_cookie('jwt', accessToken, httponly=True)
 
-        refreshToken = response.data['refresh']
-        response.set_cookie('refresh', refreshToken, httponly=True)
+        if refreshToken := response.data['refresh']:
+            response.set_cookie('refresh', refreshToken, httponly=True)
+
         return response
 
 class JWTAuthMe(APIView):
@@ -79,7 +82,7 @@ class UserViewSet(ModelViewSet):
     lookup_field = 'slug'
     serializer_class = UserSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def paginate_queryset(self, queryset) -> Any:
         if 'all' not in self.request.GET:
