@@ -1,3 +1,4 @@
+from rest_framework.serializers import ValidationError
 from typing import Dict, List, OrderedDict
 
 from django.core.validators import MaxLengthValidator, MinLengthValidator
@@ -15,6 +16,8 @@ get_user = lambda u : model_to_dict(u, ['username', 'emaill', 'created_at', 'upd
 # create serializers here.
 
 class QuestionSerializer(serializers.ModelSerializer):
+    VALID_MCQ_OPTIONS = ['a', 'b', 'c']
+
     id = serializers.SlugField(source='slug', required=False)
     quiz = serializers.SlugField(required=False, source='quiz_slug', validators=[
         ExistValidator(Quiz, field='slug')
@@ -48,8 +51,15 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
         attrs['answer'] = attrs['answer'].lower()
+
         if quiz_slug := attrs.pop('quiz_slug', False):
             attrs['quiz'] = Quiz.objects.get(slug=quiz_slug)
+
+        if attrs['question_type'] == 'mcq' and \
+                attrs['answer'] not in self.VALID_MCQ_OPTIONS:
+
+            raise ValidationError('answers not valid mcq option.')
+
         return attrs
 
     def to_representation(self, instance : Question):
