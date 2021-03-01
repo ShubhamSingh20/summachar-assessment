@@ -145,7 +145,9 @@ class UserTakenQuizSolutionSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'answer']
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
-        attrs['answer'] = attrs['answer'].lower()
-        if question_slug := attrs.pop('question_slug', False):
-            attrs['question'] = Question.objects.get(slug=question_slug)
+        attrs['answer'] = attrs.get('answer').lower()
+        question_slug = attrs.pop('question_slug'):
+        question = Question.objects.get(slug=question_slug)
+        attrs['is_correct'] = question.answer == attrs.get('answer')
+        attrs['question'] = question
         return attrs
