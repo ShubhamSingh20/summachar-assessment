@@ -1,7 +1,5 @@
-from datetime import date
 from typing import Any, Dict
 
-from django.db.models.query import QuerySet
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
