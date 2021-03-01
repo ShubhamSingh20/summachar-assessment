@@ -20,7 +20,7 @@ class IsOwnerOrNoAccess(BasePermission):
 class AdminUserOnly(BasePermission):
     message = 'Only Admin users are allowed'
 
-    def has_permission(self, request, view, obj):
+    def has_permission(self, request, view):
         return bool(
             hasattr(request, 'user')
             and request.user.is_authenticated 

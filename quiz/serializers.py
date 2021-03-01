@@ -37,7 +37,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         model = Question
         lookup_field = 'slug'
         fields = [
-            'id', 'slug', 'quiz', 'question_text',
+            'id', 'quiz', 'question_text',
             'question_img', 'question_type',
             'answer', 'created_at', 'updated_at'
         ]
@@ -62,8 +62,8 @@ class QuizWithoutQuestionsSerializer(serializers.ModelSerializer):
         model = Quiz
         lookup_field = 'slug'
         fields = [
-            'id', 'slug', 'schedule_date',
-            'end_date', 'is_public', 'description',
+            'id', 'name', 'schedule_date',
+            'end_date', 'description',
             'time_per_question', 'created_at', 'updated_at',
             'is_live', 'question_count',
         ]
@@ -73,7 +73,9 @@ class QuizWithoutQuestionsSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance : Quiz):
         data : OrderedDict = super().to_representation(instance)
+        data['id'] = instance.slug
         data['questions'] = instance.questions.values_list('slug', flat=True)
+        data['total_questions'] = instance.question_count
         return data
 
 class QuizSerializer(serializers.ModelSerializer):
@@ -90,9 +92,10 @@ class QuizSerializer(serializers.ModelSerializer):
         lookup_field = 'slug'
         read_only_fields = ['id', 'created_at', 'updated_at']
         fields = [
-            'id', 'slug', 'schedule_date', 'questions',
-            'end_date', 'is_public', 'description',
-            'time_per_question', 'created_at', 'updated_at',
+            'id', 'name', 'schedule_date', 
+            'end_date', 'description', 
+            'time_per_question', 'is_live',
+            'questions', 'created_at', 'updated_at',
         ]
 
         extra_kwargs = {
@@ -109,7 +112,7 @@ class QuizSerializer(serializers.ModelSerializer):
         questions : CollectedDict = validated_data.pop('questions', [])
         quiz : Quiz = super().create(validated_data)
 
-        question_instances = map(lambda x: Question(quiz=quiz, **x), questions)
+        question_instances = list(map(lambda x: Question(quiz=quiz, **x), questions))
         Question.objects.bulk_create(question_instances)
 
         return quiz
@@ -123,7 +126,7 @@ class QuizSerializer(serializers.ModelSerializer):
         create_question_data : CollectedDict = list(filter(lambda x: 'slug' not in dict(x).keys(), questions))
         update_question_data : CollectedDict = list(filter(lambda x: 'slug' in dict(x).keys(), questions))
 
-        create_question_instance = map(lambda x: Question(quiz=quiz, **x), create_question_data)
+        create_question_instance = list(map(lambda x: Question(quiz=quiz, **x), create_question_data))
 
         # bulk create questions
         Question.objects.bulk_create(create_question_instance)
@@ -146,8 +149,7 @@ class UserTakenQuizSolutionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
         attrs['answer'] = attrs.get('answer').lower()
-        question_slug = attrs.pop('question_slug'):
-        question = Question.objects.get(slug=question_slug)
+        question = Question.objects.get(slug=attrs.pop('question_slug'))
         attrs['is_correct'] = question.answer == attrs.get('answer')
         attrs['question'] = question
         return attrs

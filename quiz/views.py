@@ -1,6 +1,7 @@
 from typing import List
 
 from rest_framework import status
+from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
@@ -27,6 +28,8 @@ class QuestionViewSet(ModelViewSetWithoutList):
     serializer_class = QuestionSerializer
 
     def get_permissions(self) -> List:
+        permission_classes = []
+
         if self.action == 'retrieve':
             permission_classes = [IsQuizLive]
 
@@ -52,6 +55,8 @@ class QuizViewSet(ModelViewSet):
             return QuizSerializer
 
     def get_permissions(self) -> List:
+        permission_classes = []
+
         if self.action == 'retrieve':
             # a non admin user can only view the quiz 
             # questions when it's live
@@ -74,7 +79,7 @@ class QuizViewSet(ModelViewSet):
 
     @action(
         detail=True, methods=['post'], 
-        permission_classes=[IsAuthenticated, IsQuizTaken, IsQuizLive]
+        permission_classes=[IsAuthenticated, IsQuizLive, IsQuizTaken]
     )
     def user_submit(self, request, pk) -> Response:
         quiz : Quiz = self.get_object(pk)

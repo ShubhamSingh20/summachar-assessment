@@ -1,6 +1,6 @@
 from uuid import uuid4
 from django.db import models
-from datetime import datetime
+from django.utils import timezone
 from helper.models import ModelStamps
 from django.db.models.query import QuerySet
 from django.contrib.auth import get_user_model
@@ -31,7 +31,7 @@ class Quiz(ModelStamps):
 
     @property
     def is_live(self) -> bool:
-        today = datetime.now()
+        today = timezone.now()
         return  today >= self.schedule_date or today <= self.end_date 
 
     @property
