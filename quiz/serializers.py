@@ -10,7 +10,7 @@ from quiz.models import Question, QuestionSolution, Quiz
 
 CollectedDict = List[OrderedDict]
 
-get_user = lambda u : model_to_dict(u, ['username', 'created_at', 'updated_at'])
+get_user = lambda u : model_to_dict(u, ['username', 'emaill', 'created_at', 'updated_at'])
 
 # create serializers here.
 
