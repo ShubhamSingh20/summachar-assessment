@@ -144,8 +144,8 @@ class UserTakenQuizSolutionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuestionSolution
-        read_only_fields = ['id']
-        fields = ['id', 'question', 'answer']
+        read_only_fields = ['id', 'is_correct']
+        fields = ['id', 'question', 'answer', 'is_correct']
 
     def validate(self, attrs : OrderedDict) -> OrderedDict:
         attrs['answer'] = attrs.get('answer').lower()
